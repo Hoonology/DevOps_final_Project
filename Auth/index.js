@@ -1,44 +1,53 @@
 const AWS = require('aws-sdk');
 const ddb = new AWS.DynamoDB.DocumentClient();
-//Test Git Action
 
-// DynamoDB에서 사용자 정보를 찾는 함수
-async function findUser(email, password) {
+// DynamoDB에서 사용자 정보를 조회하는 함수
+async function getUser(email, password) {
   const params = {
-    TableName: 'Dynamo_user',
+    TableName: 'dynamodb_user',
     Key: {
       email: email,
       password: password,
     },
   };
 
-  return ddb.get(params).promise();
+  const result = await ddb.get(params).promise();
+  return result.Item;
 }
+
 
 exports.handler = async (event) => {
   try {
     const email = event.email;
     const password = event.password;
 
-    // Find the user with the given email and password in the DynamoDB table
-    const data = await findUser(email, password);
+    // DynamoDB에서 사용자 정보를 조회
+  const user = await getUser(email, password);
 
-    // Check if user data is returned
-    if (!data.Item) {
+
+    if (!user) {
       // User not found
       return {
         statusCode: 404,
         body: JSON.stringify({ message: 'User not found' }),
       };
-    } else {
-      // User found, login successful
+    }
+
+    if (user.password === password) {
+      // Passwords match, login successful
       return {
         statusCode: 200,
         headers: {
           'Access-Control-Allow-Origin': '*',
-          // 'Access-Control-Allow-Credentials': true,
+          'Access-Control-Allow-Credentials': true,
         },
         body: JSON.stringify({ message: 'Login successful' }),
+      };
+    } else {
+      // Passwords do not match, login failed
+      return {
+        statusCode: 401,
+        body: JSON.stringify({ message: 'Login failed' }),
       };
     }
   } catch (error) {
@@ -49,5 +58,3 @@ exports.handler = async (event) => {
     };
   }
 };
-
-
