@@ -1,40 +1,60 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="UTF-8">
-    <title>Login Page</title>
-    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
-</head>
-<body>
-    <h1> Login </h1>
-    <p>아래 이메일 버튼을 누르면 로그인 시도가 이루어집니다.</p>
-    <button id="loginButton">mase306@naver.com</button>
+const AWS = require('aws-sdk');
+const ddb = new AWS.DynamoDB.DocumentClient();
 
-    <script>
-        $(document).ready(function() {
-            $('#loginButton').click(function() {
-                $.ajax({
-                    url: 'https://jeu65tbcz6.execute-api.ap-northeast-2.amazonaws.com/stage3/dynamo_user',
-                    type: 'POST',
-                    contentType: 'application/json',
-                    data: JSON.stringify({
-                        "email": "mase306@naver.com",
-                        "password": "zerobase0000!"
-                    }),
-                    success: function(data, textStatus, xhr) {
-                        if(xhr.status === 200) {
-                            alert('로그인 성공! [확인] 버튼을 누르면 '+ "\n" + '2초 뒤에 Task 조회 화면으로 넘어갑니다');
-                            setTimeout(function() {
-                                window.location.href = './task.html';
-                            }, 2000);
-                        }
-                    },
-                    error: function(xhr, textStatus, errorThrown) {
-                        alert('Login failed: ' + textStatus);
-                    }
-                });
-            });
-        });//git action check
-    </script>
-</body>
-</html>
+// DynamoDB에서 사용자 정보를 조회하는 함수
+async function getUser(email, password) {
+  const params = {
+    TableName: 'dynamodb_user',
+    Key: {
+      email: email,
+      password: password,
+    },
+  };
+
+  const result = await ddb.get(params).promise();
+  return result.Item;
+}
+
+
+exports.handler = async (event) => {
+  try {
+    const email = event.email;
+    const password = event.password;
+
+    // DynamoDB에서 사용자 정보를 조회
+  const user = await getUser(email, password);
+
+
+    if (!user) {
+      // User not found
+      return {
+        statusCode: 404,
+        body: JSON.stringify({ message: 'User not found' }),
+      };
+    }
+
+    if (user.password === password) {
+      // Passwords match, login successful
+      return {
+        statusCode: 200,
+        headers: {
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Credentials': true,
+        },
+        body: JSON.stringify({ message: 'Login successful' }),
+      };
+    } else {
+      // Passwords do not match, login failed
+      return {
+        statusCode: 401,
+        body: JSON.stringify({ message: 'Login failed' }),
+      };
+    }
+  } catch (error) {
+    console.log(error);
+    return {
+      statusCode: 500,
+      body: 'Error occurred',
+    };
+  }
+};
