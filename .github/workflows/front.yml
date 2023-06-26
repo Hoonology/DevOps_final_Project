@@ -32,4 +32,4 @@ jobs:
       - name: Deploy to S3
         run: |
           aws s3 sync ./ s3://${{ env.S3_BUCKET_NAME }}/
-        working-directory: ${{ env.working-directory }}  # 정적 웹 페이지 파일이 위치한 디렉토리를 지정합니다. 필요에 따라 변경 가능합니다.
+        working-directory: ${{ env.working-directory }}  # 정적 웹 페이지 파일이 위치한 디렉토리를 지정합니다.

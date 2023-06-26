@@ -35,5 +35,5 @@ jobs:
         aws-region: ap-northeast-2  # AWS region을 지정합니다.
 
     - name: Deploy to Lambda
-      run: aws lambda update-function-code --function-name DynamoUserLambda --zip-file fileb://function.zip  # 'my-function' 부분을 실제 Lambda 함수 이름으로 바꿔주세요.
+      run: aws lambda update-function-code --function-name DynamoUserLambda --zip-file fileb://function.zip  # Lambda 함수 이름
       working-directory: ${{ env.working-directory }}
