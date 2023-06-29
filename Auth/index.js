@@ -1,3 +1,4 @@
+const jwt = require('jsonwebtoken');
 const AWS = require('aws-sdk');
 const ddb = new AWS.DynamoDB.DocumentClient();
 
@@ -15,15 +16,21 @@ async function getUser(email, password) {
   return result.Item;
 }
 
-
-exports.handler = async (event) => {
+exports.handler = async (event, context, callback) => {
   try {
-    const email = event.email;
-    const password = event.password;
+    // Get the JWT token from the request headers
+    const authorizationHeader = event.headers.Authorization;
+    const token = authorizationHeader.replace('Bearer ', '');
+
+    // Verify and decode the token
+    const decoded = jwt.verify(token, 'yourSecretKey');
+
+    // Get the email and password from the decoded token
+    const email = decoded.email;
+    const password = decoded.password;
 
     // DynamoDB에서 사용자 정보를 조회
-  const user = await getUser(email, password);
-
+    const user = await getUser(email, password);
 
     if (!user) {
       // User not found
@@ -35,7 +42,7 @@ exports.handler = async (event) => {
 
     if (user.password === password) {
       // Passwords match, login successful
-      return {
+      const response = {
         statusCode: 200,
         headers: {
           'Access-Control-Allow-Origin': '*',
@@ -43,6 +50,9 @@ exports.handler = async (event) => {
         },
         body: JSON.stringify({ message: 'Login successful' }),
       };
+
+      // Allow the request using the user's email as principalId
+      callback(null, generateAllow(email, event.methodArn, response));
     } else {
       // Passwords do not match, login failed
       return {
@@ -58,3 +68,21 @@ exports.handler = async (event) => {
     };
   }
 };
+
+function generateAllow(principalId, resource, response) {
+  return {
+    principalId: principalId,
+    policyDocument: {
+      Version: '2012-10-17',
+      Statement: [
+        {
+          Action: 'execute-api:Invoke',
+          Effect: 'Allow',
+          Resource: resource,
+        },
+      ],
+    },
+    ...response,
+  };
+}
+
